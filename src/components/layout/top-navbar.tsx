@@ -9,15 +9,14 @@ import {
   Search,
   Bell,
   Headphones,
-  SlidersHorizontal,
   ChevronDown,
-  Download,
   LogOut,
   UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/store/sidebar-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useNavbarFilterStore } from "@/store/navbar-filter-store";
 import type { UserRole } from "@/store/auth-store";
 
 const roleBadgeColors: Record<UserRole, string> = {
@@ -54,11 +53,9 @@ interface PillConfig {
 }
 
 const contextPills: Record<string, PillConfig[]> = {
-  "/": [
-    { label: "Filter", icon: SlidersHorizontal },
-    { label: "Monthly", isDropdown: true },
-    { label: "Download Data", icon: Download },
-  ],
+  "/": [],
+  "/ai": [],
+  "/profile": [],
   "/cases": [
     { label: "All Cases" },
     { label: "Active" },
@@ -86,8 +83,10 @@ const contextPills: Record<string, PillConfig[]> = {
   ],
   "/settings": [
     { label: "General" },
-    { label: "Team" },
+    { label: "Users & Roles" },
+    { label: "Notifications" },
     { label: "Billing" },
+    { label: "Integrations" },
   ],
 };
 
@@ -126,6 +125,7 @@ export function TopNavbar() {
   const { isCollapsed, setMobileOpen } = useSidebarStore();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const setActiveFilter = useNavbarFilterStore((s) => s.setActiveFilter);
   const title = getPageTitle(pathname);
   const pills = getContextPills(pathname);
   const [activePill, setActivePill] = useState(0);
@@ -187,10 +187,14 @@ export function TopNavbar() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Reset active pill when route changes
+  // Reset active pill when route changes and set initial filter
   useEffect(() => {
     setActivePill(0);
-  }, [pathname]);
+    const currentPills = getContextPills(pathname);
+    if (currentPills.length > 0) {
+      setActiveFilter(currentPills[0].label);
+    }
+  }, [pathname, setActiveFilter]);
 
   // Animate pills on mount / route change
   useEffect(() => {
@@ -259,7 +263,10 @@ export function TopNavbar() {
               <button
                 key={pill.label}
                 ref={(el) => setPillRef(el, index)}
-                onClick={() => setActivePill(index)}
+                onClick={() => {
+                  setActivePill(index);
+                  setActiveFilter(pill.label);
+                }}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-medium",
                   "transition-all duration-200",

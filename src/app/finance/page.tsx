@@ -32,6 +32,7 @@ import { invoices, expenses, clients, cases } from "@/services/mock-data";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToastStore } from "@/store/toast-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useNavbarFilterStore } from "@/store/navbar-filter-store";
 import type { Invoice, Expense } from "@/types";
 
 // -- Mock chart data --
@@ -188,6 +189,11 @@ export default function FinancePage() {
   const user = useAuthStore((s) => s.user);
   const canEditFinance = hasPermission("canEditFinance");
   const canViewFinance = hasPermission("canViewFinance");
+  const activeFilter = useNavbarFilterStore((s) => s.activeFilter);
+
+  const showOverview = activeFilter === "Overview" || activeFilter === "" || !activeFilter;
+  const showInvoices = showOverview || activeFilter === "Invoices";
+  const showExpenses = showOverview || activeFilter === "Expenses";
 
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -326,7 +332,7 @@ export default function FinancePage() {
       />
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {showOverview && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Revenue"
           value={formatCurrency(stats.totalRevenue)}
@@ -355,10 +361,10 @@ export default function FinancePage() {
           trendLabel="vs last month"
           icon={Receipt}
         />
-      </div>
+      </div>}
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {showOverview && <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Revenue vs Outstanding bar chart */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 text-base font-semibold text-text-primary">
@@ -457,10 +463,10 @@ export default function FinancePage() {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Invoices table */}
-      <div className="space-y-3">
+      {showInvoices && <div className="space-y-3">
         <h3 className="text-lg font-semibold text-text-primary">Invoices</h3>
         <DataTable
           columns={invoiceColumns}
@@ -468,10 +474,10 @@ export default function FinancePage() {
           searchKey="clientName"
           searchPlaceholder="Search invoices by client..."
         />
-      </div>
+      </div>}
 
       {/* Expenses table */}
-      <div className="space-y-3">
+      {showExpenses && <div className="space-y-3">
         <h3 className="text-lg font-semibold text-text-primary">
           Recent Expenses
         </h3>
@@ -481,7 +487,7 @@ export default function FinancePage() {
           searchKey="description"
           searchPlaceholder="Search expenses..."
         />
-      </div>
+      </div>}
 
       {/* Create Invoice Modal */}
       <Modal

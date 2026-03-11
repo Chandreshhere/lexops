@@ -23,6 +23,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import { useToastStore } from "@/store/toast-store";
 import { useAuthStore } from "@/store/auth-store";
 import { useCaseMilestoneStore } from "@/store/case-milestone-store";
+import { useNavbarFilterStore } from "@/store/navbar-filter-store";
 import type { Case, Domain, CaseStatus, Priority, MilestoneStatus } from "@/types";
 
 const domains: Domain[] = [
@@ -162,11 +163,19 @@ export default function CasesPage() {
   const user = useAuthStore((s) => s.user);
   const getMilestoneProgress = useCaseMilestoneStore((s) => s.getMilestoneProgress);
   const getCaseMilestones = useCaseMilestoneStore((s) => s.getCaseMilestones);
+  const activeFilter = useNavbarFilterStore((s) => s.activeFilter);
 
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+
+  // Sync navbar pills with status filter
+  useEffect(() => {
+    if (activeFilter === "Active") setStatusFilter("Active");
+    else if (activeFilter === "Closed") setStatusFilter("Closed");
+    else if (activeFilter === "All Cases") setStatusFilter("all");
+  }, [activeFilter]);
   const [modalOpen, setModalOpen] = useState(false);
 
   // Form state

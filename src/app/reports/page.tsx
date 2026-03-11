@@ -19,6 +19,7 @@ import gsap from "gsap";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToastStore } from "@/store/toast-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useNavbarFilterStore } from "@/store/navbar-filter-store";
 import { cases, invoices, employees, upcomingHearings, expenses, clients } from "@/services/mock-data";
 import { formatCurrency } from "@/lib/utils";
 
@@ -117,12 +118,21 @@ export default function ReportsPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const user = useAuthStore((s) => s.user);
   const canExportReports = hasPermission("canExportReports");
+  const activeFilter = useNavbarFilterStore((s) => s.activeFilter);
 
   // Filter reports based on role
   const financialReportNames = ["Financial Summary", "Aging Receivables", "Expense Report"];
-  const visibleReports = user?.role === "accountant"
+  const roleFilteredReports = user?.role === "accountant"
     ? reports.filter((r) => financialReportNames.includes(r.name))
     : reports;
+
+  // Navbar pill filter
+  const visibleReports = activeFilter === "Summary"
+    ? roleFilteredReports.filter((r) => r.frequency === "Daily" || r.frequency === "Weekly")
+    : activeFilter === "Detailed"
+    ? roleFilteredReports.filter((r) => r.frequency === "Monthly")
+    : roleFilteredReports;
+
 
   // GSAP page entry animation
   useEffect(() => {
@@ -260,6 +270,14 @@ export default function ReportsPage() {
       description: "Report has been saved as a CSV file.",
     });
   };
+
+  // Auto-trigger export when Export pill is clicked
+  useEffect(() => {
+    if (activeFilter === "Export" && canExportReports) {
+      handleExportAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter]);
 
   return (
     <div ref={pageRef} className="space-y-6">

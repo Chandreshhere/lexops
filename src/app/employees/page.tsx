@@ -13,6 +13,7 @@ import { employees } from "@/services/mock-data";
 import { formatDate, getInitials } from "@/lib/utils";
 import { useToastStore } from "@/store/toast-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useNavbarFilterStore } from "@/store/navbar-filter-store";
 import type { Employee, Department } from "@/types";
 
 /* ---------- department badge colours ---------- */
@@ -147,21 +148,25 @@ export default function EmployeesPage() {
   const user = useAuthStore((s) => s.user);
   const canManageEmployees = hasPermission("canManageEmployees");
   const canViewAll = hasPermission("canViewAllCases");
+  const activeFilter = useNavbarFilterStore((s) => s.activeFilter);
 
   // Domain-based employee filtering: associates only see employees in their domain
   const filteredEmployees = useMemo(() => {
-    if (canViewAll || canManageEmployees) return employees;
-    if (!user) return [];
-
-    const userDept = user.department;
-    if (userDept && userDept !== "Admin") {
-      return employees.filter(
-        (e) => e.department === userDept || e.department === "Admin"
-      );
+    let list = employees;
+    if (!canViewAll && !canManageEmployees && user) {
+      const userDept = user.department;
+      if (userDept && userDept !== "Admin") {
+        list = list.filter(
+          (e) => e.department === userDept || e.department === "Admin"
+        );
+      }
     }
 
-    return employees;
-  }, [canViewAll, canManageEmployees, user]);
+    // Navbar pill filter
+    if (activeFilter === "Active") return list.filter((e) => e.activeCases > 0);
+    if (activeFilter === "On Leave") return list.filter((e) => e.activeCases === 0);
+    return list;
+  }, [canViewAll, canManageEmployees, user, activeFilter]);
 
   const [modalOpen, setModalOpen] = useState(false);
 

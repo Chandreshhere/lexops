@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
@@ -12,6 +12,7 @@ import { clients } from "@/services/mock-data";
 import { formatCurrency, getInitials } from "@/lib/utils";
 import { useToastStore } from "@/store/toast-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useNavbarFilterStore } from "@/store/navbar-filter-store";
 import type { Client } from "@/types";
 
 const TAG_COLORS: Record<string, string> = {
@@ -130,7 +131,14 @@ export default function ClientsPage() {
   const pageRef = useRef<HTMLDivElement>(null);
   const addToast = useToastStore((s) => s.addToast);
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const activeFilter = useNavbarFilterStore((s) => s.activeFilter);
   const [modalOpen, setModalOpen] = useState(false);
+
+  const filteredClients = useMemo(() => {
+    if (activeFilter === "Active") return clients.filter((c) => c.activeCases > 0);
+    if (activeFilter === "Inactive") return clients.filter((c) => c.activeCases === 0);
+    return clients;
+  }, [activeFilter]);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -196,7 +204,7 @@ export default function ClientsPage() {
 
       <DataTable
         columns={columns}
-        data={clients}
+        data={filteredClients}
         searchKey="name"
         searchPlaceholder="Search clients..."
         onRowClick={(client) => router.push(`/clients/${client.id}`)}

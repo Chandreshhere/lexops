@@ -33,6 +33,7 @@ import {
   type UserRole,
 } from "@/store/auth-store";
 import { useToastStore } from "@/store/toast-store";
+import { useNavbarFilterStore } from "@/store/navbar-filter-store";
 import { cn, getInitials } from "@/lib/utils";
 
 /* ---------- constants ---------- */
@@ -193,8 +194,23 @@ export default function SettingsPage() {
   const { user, allUsers, setRole, hasPermission } = useAuthStore();
   const addToast = useToastStore((s) => s.addToast);
   const canManageUsers = hasPermission("canManageUsers");
+  const activeFilter = useNavbarFilterStore((s) => s.activeFilter);
 
   const [activeTab, setActiveTab] = useState("general");
+
+  // Sync navbar pills with settings tabs
+  useEffect(() => {
+    const pillToTab: Record<string, string> = {
+      "General": "general",
+      "Users & Roles": "users",
+      "Notifications": "notifications",
+      "Billing": "billing",
+      "Integrations": "integrations",
+    };
+    if (activeFilter && pillToTab[activeFilter]) {
+      setActiveTab(pillToTab[activeFilter]);
+    }
+  }, [activeFilter]);
 
   // General tab - editable states
   const [editingFirm, setEditingFirm] = useState(false);
@@ -309,7 +325,7 @@ export default function SettingsPage() {
       <PageHeader title="Settings" />
 
       <div ref={tabContentRef}>
-        <TabsRoot defaultValue="general" onValueChange={(value) => setActiveTab(value)}>
+        <TabsRoot value={activeTab} onValueChange={(value) => setActiveTab(value)}>
           <TabsList>
             <TabsTrigger value="general">
               <span className="flex items-center gap-1.5">

@@ -359,6 +359,7 @@ export default function DashboardPage() {
   /* ---------- Early return ---------- */
   if (!user) return null;
   const firstName = user.name.split(" ")[0];
+  const isAdminOrPartner = user.role === "admin" || user.role === "partner";
 
   /* ---------- Handlers ---------- */
 
@@ -460,9 +461,9 @@ export default function DashboardPage() {
       </div>
 
       {/* ================================================================== */}
-      {/* QUICK STATS ROW                                                      */}
+      {/* QUICK STATS ROW (admin & partner only)                               */}
       {/* ================================================================== */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      {isAdminOrPartner && <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <div data-card className="overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50">
             <Users className="h-4 w-4 text-blue-600" />
@@ -505,12 +506,12 @@ export default function DashboardPage() {
           <p className="mt-3 text-2xl font-bold text-text-primary">{pendingTasksCount}</p>
           <p className="text-xs text-text-muted">Pending Tasks</p>
         </div>
-      </div>
+      </div>}
 
       {/* ================================================================== */}
-      {/* FILTER BAR ROW                                                      */}
+      {/* FILTER BAR ROW (admin & partner only)                               */}
       {/* ================================================================== */}
-      <div data-card className="relative z-20 flex items-center justify-between gap-4">
+      {isAdminOrPartner && <div data-card className="relative z-20 flex items-center justify-between gap-4">
         {searchOpen ? (
           /* ---- Search mode ---- */
           <div className="relative flex-1">
@@ -715,12 +716,12 @@ export default function DashboardPage() {
             </div>
           </>
         )}
-      </div>
+      </div>}
 
       {/* ================================================================== */}
-      {/* FIRST ROW — 4 CARDS                                                 */}
+      {/* FIRST ROW — 4 CARDS (admin & partner only)                          */}
       {/* ================================================================== */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+      {isAdminOrPartner && <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
         {/* ---- Card 1: Case Report Pending ---- */}
         <div
           data-card
@@ -1015,7 +1016,7 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ================================================================== */}
       {/* SECOND ROW — 3 CARDS                                                */}
