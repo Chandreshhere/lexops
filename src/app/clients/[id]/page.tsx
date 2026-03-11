@@ -7,17 +7,19 @@ import {
   ArrowLeft,
   Phone,
   Mail,
-  MapPin,
-  Calendar,
   User,
-  Globe,
   FileText,
   MessageSquare,
   PhoneCall,
   Video,
   Users,
+  IndianRupee,
+  Briefcase,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  TrendingUp,
 } from "lucide-react";
-import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -32,13 +34,14 @@ import {
   cases,
   invoices,
   communicationLogs,
+  whatsappMessages,
 } from "@/services/mock-data";
 import {
   formatCurrency,
   formatDate,
   getInitials,
 } from "@/lib/utils";
-import type { Case, Invoice, CommunicationLog } from "@/types";
+import type { Case, Invoice, CommunicationLog, WhatsAppMessage } from "@/types";
 
 const TAG_COLORS: Record<string, string> = {
   VIP: "bg-amber-100 text-amber-700",
@@ -221,33 +224,6 @@ const commColumns: ColumnDef<CommunicationLog>[] = [
   },
 ];
 
-// -- Info item component --
-function InfoItem({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Phone;
-  label: string;
-  value: string | undefined;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50">
-        <Icon className="h-4 w-4 text-primary" />
-      </div>
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
-          {label}
-        </p>
-        <p className="mt-0.5 text-sm text-text-primary">
-          {value || "--"}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function ClientDetailPage({
   params,
 }: {
@@ -255,7 +231,6 @@ export default function ClientDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-
   const client = clients.find((c) => c.id === id);
 
   if (!client) {
@@ -289,6 +264,21 @@ export default function ClientDetailPage({
 
   const clientCases = cases.filter((m) => m.clientId === client.id);
   const clientInvoices = invoices.filter((inv) => inv.clientId === client.id);
+  const clientComms = communicationLogs.filter((c) => c.clientId === client.id);
+  const clientChats = whatsappMessages
+    .filter((m) => m.clientId === client.id)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  // Summary calculations
+  const activeCasesList = clientCases.filter((c) => c.status === "Active");
+  const onHoldCases = clientCases.filter((c) => c.status === "On Hold");
+  const closedCases = clientCases.filter((c) => c.status === "Closed");
+  const totalInvoiced = clientInvoices.reduce((sum, inv) => sum + inv.amount, 0);
+  const totalPaidInvoices = clientInvoices.reduce((sum, inv) => sum + inv.paidAmount, 0);
+  const pendingInvoices = clientInvoices.filter((inv) => inv.status === "Pending" || inv.status === "Overdue" || inv.status === "Partially Paid");
+  const overdueInvoices = clientInvoices.filter((inv) => inv.status === "Overdue");
+  const pendingFollowUps = clientComms.filter((c) => c.followUpRequired);
+  const lastComm = clientComms.length > 0 ? clientComms.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] : null;
 
   return (
     <div className="space-y-6">
@@ -343,45 +333,252 @@ export default function ClientDetailPage({
         </div>
       </div>
 
-      {/* Key info row */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <InfoItem icon={Phone} label="Phone" value={client.phone} />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <InfoItem icon={Mail} label="Email" value={client.email} />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <InfoItem icon={MapPin} label="Address" value={client.address} />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <InfoItem
-            icon={Calendar}
-            label="Client Since"
-            value={formatDate(client.clientSince)}
-          />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <InfoItem
-            icon={User}
-            label="Relationship Manager"
-            value={client.relationshipManager}
-          />
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <InfoItem icon={Globe} label="Source" value={client.source} />
-        </div>
-      </div>
-
       {/* Tabs */}
-      <TabsRoot defaultValue="profile">
+      <TabsRoot defaultValue="summary">
         <TabsList>
+          <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="cases">Cases</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="communication">Communication</TabsTrigger>
         </TabsList>
+
+        {/* Summary tab */}
+        <TabsContent value="summary">
+          <div className="space-y-6">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
+                    <Briefcase className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-text-primary">{activeCasesList.length}</p>
+                    <p className="text-xs text-text-muted">Active Cases</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-text-primary">{onHoldCases.length}</p>
+                    <p className="text-xs text-text-muted">On Hold</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-danger">{formatCurrency(client.outstandingAmount)}</p>
+                    <p className="text-xs text-text-muted">Outstanding</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+                    <TrendingUp className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-success">{formatCurrency(client.totalPaid)}</p>
+                    <p className="text-xs text-text-muted">Total Paid</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Case Summary */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
+                  <Briefcase className="h-4 w-4" />
+                  Case Summary
+                </h3>
+                {clientCases.length > 0 ? (
+                  <div className="space-y-3">
+                    {clientCases.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-primary-light">{c.id}</span>
+                            <StatusBadge status={c.status} />
+                          </div>
+                          <p className="mt-1 text-sm text-text-secondary">{c.caseType} — {c.domain}</p>
+                          <p className="text-xs text-text-muted">Stage: {c.currentStage}</p>
+                        </div>
+                        {c.amountOutstanding > 0 && (
+                          <span className="shrink-0 text-sm font-medium text-danger">
+                            {formatCurrency(c.amountOutstanding)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    <div className="mt-2 flex items-center justify-between border-t border-border pt-3 text-sm">
+                      <span className="text-text-muted">
+                        {activeCasesList.length} active · {closedCases.length} closed · {onHoldCases.length} on hold
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-muted">No cases found for this client.</p>
+                )}
+              </div>
+
+              {/* Payment Summary */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
+                  <IndianRupee className="h-4 w-4" />
+                  Payment Summary
+                </h3>
+                {clientInvoices.length > 0 ? (
+                  <div className="space-y-3">
+                    {clientInvoices.map((inv) => (
+                      <div key={inv.id} className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-primary-light">{inv.invoiceNumber}</span>
+                            <StatusBadge status={inv.status} />
+                          </div>
+                          <p className="mt-1 truncate text-sm text-text-secondary">{inv.description}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold">{formatCurrency(inv.amount)}</p>
+                          {inv.paidAmount > 0 && inv.paidAmount < inv.amount && (
+                            <p className="text-xs text-success">Paid: {formatCurrency(inv.paidAmount)}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="mt-2 space-y-1 border-t border-border pt-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-text-muted">Total Invoiced</span>
+                        <span className="font-medium">{formatCurrency(totalInvoiced)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-text-muted">Total Received</span>
+                        <span className="font-medium text-success">{formatCurrency(totalPaidInvoices)}</span>
+                      </div>
+                      {overdueInvoices.length > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-text-muted">Overdue Invoices</span>
+                          <span className="font-medium text-danger">{overdueInvoices.length}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-muted">No invoices found for this client.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Communication & Last Activity */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Recent Communication */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
+                  <Phone className="h-4 w-4" />
+                  Recent Communication
+                </h3>
+                {clientComms.length > 0 ? (
+                  <div className="space-y-3">
+                    {clientComms
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .slice(0, 5)
+                      .map((comm) => {
+                        const Icon = COMM_ICONS[comm.type] ?? MessageSquare;
+                        return (
+                          <div key={comm.id} className="flex gap-3 rounded-lg border border-border bg-background p-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-50">
+                              <Icon className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">{comm.type}</span>
+                                <span className="text-xs text-text-muted">{formatDate(comm.date)}</span>
+                              </div>
+                              <p className="mt-0.5 text-sm text-text-secondary">{comm.summary}</p>
+                              {comm.followUpRequired && (
+                                <p className="mt-1 text-xs font-medium text-warning">
+                                  Follow-up: {comm.followUpDate ? formatDate(comm.followUpDate) : "Required"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {pendingFollowUps.length > 0 && (
+                      <div className="mt-2 flex items-center gap-2 border-t border-border pt-3">
+                        <AlertCircle className="h-4 w-4 text-warning" />
+                        <span className="text-sm text-warning">{pendingFollowUps.length} pending follow-up(s)</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-muted">No communication logs found.</p>
+                )}
+              </div>
+
+              {/* WhatsApp Chat History */}
+              <div className="rounded-xl border border-border bg-card shadow-sm">
+                <div className="border-b border-border bg-emerald-600 px-6 py-3 rounded-t-xl">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <MessageSquare className="h-4 w-4" />
+                    WhatsApp Chat
+                  </h3>
+                </div>
+                <div className="max-h-[400px] overflow-y-auto p-4">
+                  {clientChats.length > 0 ? (
+                    <div className="space-y-3">
+                      {clientChats.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.direction === "outgoing" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-xl px-3 py-2 ${
+                              msg.direction === "outgoing"
+                                ? "rounded-tr-sm bg-emerald-100 text-emerald-900"
+                                : "rounded-tl-sm bg-gray-100 text-text-primary"
+                            }`}
+                          >
+                            <p className="text-sm">{msg.message}</p>
+                            <div className={`mt-1 flex items-center gap-1 ${msg.direction === "outgoing" ? "justify-end" : ""}`}>
+                              <span className="text-[10px] text-text-muted">
+                                {new Date(msg.timestamp).toLocaleString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                              {msg.direction === "outgoing" && msg.status && (
+                                <CheckCircle className={`h-3 w-3 ${msg.status === "read" ? "text-blue-500" : "text-text-muted"}`} />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <MessageSquare className="h-8 w-8 text-text-muted" />
+                      <p className="mt-2 text-sm text-text-muted">No WhatsApp messages recorded.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
         {/* Profile tab */}
         <TabsContent value="profile">
@@ -535,10 +732,10 @@ export default function ClientDetailPage({
 
         {/* Communication tab */}
         <TabsContent value="communication">
-          {communicationLogs.length > 0 ? (
+          {clientComms.length > 0 ? (
             <DataTable
               columns={commColumns}
-              data={communicationLogs}
+              data={clientComms}
               pageSize={10}
             />
           ) : (

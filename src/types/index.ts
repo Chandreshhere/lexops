@@ -96,11 +96,21 @@ export interface Client {
 
 export interface CommunicationLog {
   id: string;
+  clientId: string;
   type: "Call" | "WhatsApp" | "Email" | "In-Person" | "Video Call";
   date: string;
   summary: string;
   followUpRequired: boolean;
   followUpDate?: string;
+}
+
+export interface WhatsAppMessage {
+  id: string;
+  clientId: string;
+  direction: "incoming" | "outgoing";
+  message: string;
+  timestamp: string;
+  status?: "sent" | "delivered" | "read";
 }
 
 // ============ FINANCE ============
