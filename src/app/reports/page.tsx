@@ -19,6 +19,8 @@ import gsap from "gsap";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToastStore } from "@/store/toast-store";
 import { useAuthStore } from "@/store/auth-store";
+import { cases, invoices, employees, upcomingHearings, expenses, clients } from "@/services/mock-data";
+import { formatCurrency } from "@/lib/utils";
 
 /* ---------- report definitions ---------- */
 
@@ -152,6 +154,79 @@ export default function ReportsPage() {
     }
   }, []);
 
+  const downloadCSV = (filename: string, csvContent: string) => {
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const generateReportCSV = (reportName: string): string => {
+    const date = new Date().toISOString().split("T")[0];
+    switch (reportName) {
+      case "Case Status Report": {
+        const headers = ["Case ID", "Client", "Domain", "Type", "Status", "Stage", "Priority", "Assigned To", "Fee Agreed", "Outstanding"];
+        const rows = cases.map((c) => [c.id, `"${c.clientName}"`, c.domain, `"${c.caseType}"`, c.status, `"${c.currentStage}"`, c.priority, `"${c.assignedTo}"`, c.feeAgreed, c.amountOutstanding]);
+        return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      case "Financial Summary": {
+        const totalRev = invoices.reduce((s, i) => s + i.paidAmount, 0);
+        const totalOut = invoices.reduce((s, i) => s + (i.amount - i.paidAmount), 0);
+        const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
+        const summary = `Financial Summary Report - ${date}\n\nTotal Revenue,${totalRev}\nTotal Outstanding,${totalOut}\nTotal Expenses,${totalExp}\nNet Profit,${totalRev - totalExp}\n\nInvoice Details\n`;
+        const headers = ["Invoice No", "Client", "Amount", "Paid", "Status", "Due Date"];
+        const rows = invoices.map((i) => [i.invoiceNumber, `"${i.clientName}"`, i.amount, i.paidAmount, i.status, i.dueDate]);
+        return summary + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      case "Domain Performance": {
+        const domains = ["Litigation", "RERA", "TNCP", "IMC", "IDA", "Revenue", "Financial Services"];
+        const headers = ["Domain", "Total Cases", "Active", "Closed", "Total Fee", "Collected"];
+        const rows = domains.map((d) => {
+          const dc = cases.filter((c) => c.domain === d);
+          return [d, dc.length, dc.filter((c) => c.status === "Active").length, dc.filter((c) => c.status === "Closed").length, dc.reduce((s, c) => s + c.feeAgreed, 0), dc.reduce((s, c) => s + c.amountReceived, 0)];
+        });
+        return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      case "Employee Productivity": {
+        const headers = ["Name", "Designation", "Department", "Active Cases", "Pending Tasks"];
+        const rows = employees.map((e) => [`"${e.name}"`, `"${e.designation}"`, e.department, e.activeCases, e.pendingTasks]);
+        return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      case "Aging Receivables": {
+        const headers = ["Invoice No", "Client", "Amount Due", "Days Overdue", "Status"];
+        const now = new Date();
+        const rows = invoices.filter((i) => i.status === "Overdue" || i.status === "Pending" || i.status === "Partially Paid").map((i) => {
+          const due = new Date(i.dueDate);
+          const daysOver = Math.max(0, Math.ceil((now.getTime() - due.getTime()) / 86400000));
+          return [i.invoiceNumber, `"${i.clientName}"`, i.amount - i.paidAmount, daysOver, i.status];
+        });
+        return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      case "Lead Conversion": {
+        const headers = ["Client", "Type", "Source", "Referred By", "Since", "Total Cases", "Total Paid"];
+        const rows = clients.map((c) => [`"${c.name}"`, c.clientType, c.source, c.referredBy ?? "N/A", c.clientSince, c.totalCases, c.totalPaid]);
+        return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      case "Hearing Calendar": {
+        const headers = ["Date", "Case", "Client", "Court", "Purpose", "Advocate"];
+        const rows = upcomingHearings.map((h) => [h.date, `"${h.caseTitle}"`, `"${h.clientName}"`, `"${h.court}"`, `"${h.purpose}"`, `"${h.advocate}"`]);
+        return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      case "Expense Report": {
+        const headers = ["Date", "Category", "Description", "Amount", "Paid By", "Type", "Case ID"];
+        const rows = expenses.map((e) => [e.date, e.category, `"${e.description}"`, e.amount, `"${e.paidBy}"`, e.type, e.caseId ?? "N/A"]);
+        return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      }
+      default:
+        return "No data available";
+    }
+  };
+
   const handleExportAll = () => {
     if (!canExportReports) {
       addToast({
@@ -161,25 +236,28 @@ export default function ReportsPage() {
       });
       return;
     }
-    addToast({
-      type: "info",
-      title: "Generating export...",
-      description: "Preparing all reports for download.",
+    const date = new Date().toISOString().split("T")[0];
+    visibleReports.forEach((report) => {
+      const csv = generateReportCSV(report.name);
+      const safeName = report.name.toLowerCase().replace(/\s+/g, "-");
+      downloadCSV(`lexops-${safeName}-${date}.csv`, csv);
     });
-    setTimeout(() => {
-      addToast({
-        type: "success",
-        title: "Export ready!",
-        description: "Download will begin shortly.",
-      });
-    }, 1000);
+    addToast({
+      type: "success",
+      title: "All reports exported",
+      description: `${visibleReports.length} reports downloaded as CSV files.`,
+    });
   };
 
   const handleGenerateReport = (reportName: string) => {
+    const date = new Date().toISOString().split("T")[0];
+    const csv = generateReportCSV(reportName);
+    const safeName = reportName.toLowerCase().replace(/\s+/g, "-");
+    downloadCSV(`lexops-${safeName}-${date}.csv`, csv);
     addToast({
-      type: "info",
-      title: `Generating ${reportName}...`,
-      description: "Your report is being prepared.",
+      type: "success",
+      title: `${reportName} downloaded`,
+      description: "Report has been saved as a CSV file.",
     });
   };
 

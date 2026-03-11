@@ -112,6 +112,14 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
+const mockNotifications = [
+  { id: 1, title: "Hearing Tomorrow", desc: "Sharma vs. State – High Court, 10:30 AM", time: "2h ago", unread: true },
+  { id: 2, title: "Invoice Overdue", desc: "INV-2024-005 – Mehta Industries – ₹1,50,000", time: "5h ago", unread: true },
+  { id: 3, title: "Task Assigned", desc: "Draft reply for RERA complaint – Due Mar 14", time: "1d ago", unread: true },
+  { id: 4, title: "Payment Received", desc: "₹50,000 from Rajesh Sharma via UPI", time: "2d ago", unread: false },
+  { id: 5, title: "New Client Enquiry", desc: "Vikram Singh – Property dispute consultation", time: "3d ago", unread: false },
+];
+
 export function TopNavbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -123,6 +131,8 @@ export function TopNavbar() {
   const [activePill, setActivePill] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const navbarRef = useRef<HTMLElement>(null);
   const pillsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -135,9 +145,9 @@ export function TopNavbar() {
     router.push("/login");
   }, [logout, router]);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
-    if (!isDropdownOpen) return;
+    if (!isDropdownOpen && !isNotifOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -146,11 +156,17 @@ export function TopNavbar() {
       ) {
         setIsDropdownOpen(false);
       }
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(e.target as Node)
+      ) {
+        setIsNotifOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isNotifOpen]);
 
   // Close dropdown on route change
   useEffect(() => {
@@ -263,22 +279,80 @@ export function TopNavbar() {
         {/* Right section */}
         <div className="flex items-center gap-1.5">
           {/* Search */}
-          <button className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-text-secondary shadow-sm transition-all duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-text-primary">
+          <button
+            onClick={() => router.push("/ai")}
+            title="Search (AI Assistant)"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-text-secondary shadow-sm transition-all duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-text-primary"
+          >
             <Search className="h-4 w-4" />
           </button>
 
           {/* Support */}
-          <button className="hidden h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-text-secondary shadow-sm transition-all duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-text-primary sm:flex">
+          <button
+            onClick={() => router.push("/ai")}
+            title="Support"
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-text-secondary shadow-sm transition-all duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-text-primary sm:flex"
+          >
             <Headphones className="h-4 w-4" />
           </button>
 
           {/* Notifications */}
-          <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-text-secondary shadow-sm transition-all duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-text-primary">
-            <Bell className="h-4 w-4" />
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white ring-2 ring-card">
-              3
-            </span>
-          </button>
+          <div ref={notifRef} className="relative">
+            <button
+              onClick={() => setIsNotifOpen((prev) => !prev)}
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-white text-text-secondary shadow-sm transition-all duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-text-primary"
+            >
+              <Bell className="h-4 w-4" />
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white ring-2 ring-card">
+                {mockNotifications.filter((n) => n.unread).length}
+              </span>
+            </button>
+            {isNotifOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-white shadow-lg">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <p className="text-sm font-semibold text-text-primary">Notifications</p>
+                  <span className="rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary">
+                    {mockNotifications.filter((n) => n.unread).length} new
+                  </span>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {mockNotifications.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => {
+                        setIsNotifOpen(false);
+                        router.push("/ai");
+                      }}
+                      className={cn(
+                        "flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-primary-50",
+                        n.unread && "bg-blue-50/50"
+                      )}
+                    >
+                      {n.unread && (
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      )}
+                      <div className={cn("min-w-0 flex-1", !n.unread && "ml-5")}>
+                        <p className="truncate text-sm font-medium text-text-primary">{n.title}</p>
+                        <p className="truncate text-xs text-text-secondary">{n.desc}</p>
+                        <p className="mt-0.5 text-[11px] text-text-muted">{n.time}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t border-border p-2">
+                  <button
+                    onClick={() => {
+                      setIsNotifOpen(false);
+                      router.push("/ai");
+                    }}
+                    className="w-full rounded-lg py-2 text-center text-xs font-medium text-primary transition-colors hover:bg-primary-50"
+                  >
+                    View All Notifications
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* User avatar with dropdown */}
           <div ref={dropdownRef} className="relative ml-1.5">

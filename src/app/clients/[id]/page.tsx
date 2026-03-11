@@ -41,6 +41,7 @@ import {
   formatDate,
   getInitials,
 } from "@/lib/utils";
+import { useToastStore } from "@/store/toast-store";
 import type { Case, Invoice, CommunicationLog, WhatsAppMessage } from "@/types";
 
 const TAG_COLORS: Record<string, string> = {
@@ -231,6 +232,7 @@ export default function ClientDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const addToast = useToastStore((s) => s.addToast);
   const client = clients.find((c) => c.id === id);
 
   if (!client) {
@@ -704,6 +706,7 @@ export default function ClientDetailPage({
             action={
               <button
                 type="button"
+                onClick={() => addToast({ type: "info", title: "Upload", description: "Document upload will be available soon." })}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-light"
               >
                 Upload Document
