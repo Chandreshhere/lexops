@@ -17,6 +17,7 @@ import {
   X,
   UserCircle,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/store/sidebar-store";
@@ -68,6 +69,7 @@ const navItems: NavItem[] = [
     icon: Settings,
     permissionCheck: (p) => p.canManageSettings,
   },
+  { label: "AI", href: "/ai", icon: Sparkles },
   { label: "Profile", href: "/profile", icon: UserCircle },
 ];
 

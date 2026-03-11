@@ -44,6 +44,7 @@ const pageTitles: Record<string, string> = {
   "/employees": "Employees",
   "/reports": "Reports",
   "/settings": "Settings",
+  "/ai": "AI Assistant",
 };
 
 interface PillConfig {
