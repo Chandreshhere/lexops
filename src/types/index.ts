@@ -208,12 +208,22 @@ export interface LeaveRecord {
 // ============ MILESTONES ============
 export type MilestoneStatus = "Not Started" | "In Progress" | "Completed" | "Blocked" | "Skipped";
 
+export interface MilestoneTask {
+  id: string;
+  name: string;
+  description: string;
+  responsible: "Lawyer" | "Client" | "Authority" | "Architect" | "Surveyor" | "Clerk";
+  documentsRequired?: string[];
+  documentsGenerated?: string[];
+}
+
 export interface MilestoneDefinition {
   id: string;
   name: string;
   description: string;
   order: number;
   estimatedDays?: number;
+  tasks?: MilestoneTask[];
 }
 
 export interface DomainMilestoneTemplate {

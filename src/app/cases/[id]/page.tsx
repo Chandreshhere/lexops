@@ -22,6 +22,7 @@ import {
   Plus,
   Trash2,
   ChevronRight,
+  ChevronDown,
   Target,
   ArrowRightLeft,
   Send,
@@ -29,6 +30,11 @@ import {
   X,
   LayoutList,
   Columns3,
+  GitBranch,
+  ClipboardList,
+  UserCircle,
+  FolderOpen,
+  FolderOutput,
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TabsRoot, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -40,6 +46,7 @@ import {
   communicationLogs,
   upcomingHearings,
   employees,
+  getMilestoneTemplate,
 } from "@/services/mock-data";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -121,7 +128,8 @@ export default function CaseDetailPage() {
   const updateMilestone = useCaseMilestoneStore((s) => s.updateMilestone);
 
   // Milestones view mode
-  const [milestonesView, setMilestonesView] = useState<"timeline" | "kanban">("kanban");
+  const [milestonesView, setMilestonesView] = useState<"timeline" | "kanban" | "taskflow">("kanban");
+  const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
 
   // Modal state for add milestone
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -182,6 +190,12 @@ export default function CaseDetailPage() {
   const canManageMilestones = isAdmin || isAssigned;
 
   const employeeNames = employees.filter((e) => e.designation !== "Accountant").map((e) => e.name);
+
+  // Task flow template — has sub-tasks per milestone for domains that define them
+  const milestoneTemplate = useMemo(
+    () => currentCase ? getMilestoneTemplate(currentCase.domain as Domain) : [],
+    [currentCase]
+  );
 
   if (!currentCase) {
     return (
@@ -663,6 +677,20 @@ export default function CaseDetailPage() {
                         <LayoutList className="h-3.5 w-3.5" />
                         Timeline
                       </button>
+                      {milestoneTemplate.some((t) => t.tasks && t.tasks.length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => setMilestonesView("taskflow")}
+                          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                            milestonesView === "taskflow"
+                              ? "bg-primary text-white shadow-sm"
+                              : "text-text-secondary hover:text-text-primary"
+                          }`}
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                          Task Flow
+                        </button>
+                      )}
                     </div>
                     {isAdmin && (
                       <button
@@ -886,6 +914,167 @@ export default function CaseDetailPage() {
                     );
                   })}
                 </div>
+              </div>
+              )}
+
+              {/* ---- TASK FLOW VIEW ---- */}
+              {milestonesView === "taskflow" && (
+              <div className="space-y-4">
+                {milestoneTemplate.map((template, tIdx) => {
+                  const caseMilestone = milestones.find((m) => m.name === template.name);
+                  const status = caseMilestone?.status ?? "Not Started";
+                  const isExpanded = expandedMilestone === template.id;
+                  const hasTasks = template.tasks && template.tasks.length > 0;
+
+                  const statusColor =
+                    status === "Completed" ? "bg-success" :
+                    status === "In Progress" ? "bg-primary" :
+                    status === "Blocked" ? "bg-danger" :
+                    status === "Skipped" ? "bg-gray-300" :
+                    "bg-gray-200";
+                  const statusBg =
+                    status === "Completed" ? "bg-success-bg text-success" :
+                    status === "In Progress" ? "bg-primary-50 text-primary" :
+                    status === "Blocked" ? "bg-danger-bg text-danger" :
+                    status === "Skipped" ? "bg-gray-100 text-gray-500" :
+                    "bg-gray-100 text-gray-500";
+                  const borderColor =
+                    status === "Completed" ? "border-success/30" :
+                    status === "In Progress" ? "border-primary/30" :
+                    status === "Blocked" ? "border-danger/30" :
+                    "border-border";
+
+                  const responsibleIcon = (role: string) => {
+                    switch (role) {
+                      case "Lawyer": return <Gavel className="h-3 w-3" />;
+                      case "Client": return <UserCircle className="h-3 w-3" />;
+                      case "Authority": return <Target className="h-3 w-3" />;
+                      case "Architect": return <Columns3 className="h-3 w-3" />;
+                      case "Surveyor": return <Target className="h-3 w-3" />;
+                      case "Clerk": return <ClipboardList className="h-3 w-3" />;
+                      default: return <User className="h-3 w-3" />;
+                    }
+                  };
+
+                  const responsibleColor = (role: string) => {
+                    switch (role) {
+                      case "Lawyer": return "bg-blue-50 text-blue-700 border-blue-200";
+                      case "Client": return "bg-purple-50 text-purple-700 border-purple-200";
+                      case "Authority": return "bg-amber-50 text-amber-700 border-amber-200";
+                      case "Architect": return "bg-emerald-50 text-emerald-700 border-emerald-200";
+                      case "Surveyor": return "bg-cyan-50 text-cyan-700 border-cyan-200";
+                      case "Clerk": return "bg-orange-50 text-orange-700 border-orange-200";
+                      default: return "bg-gray-50 text-gray-700 border-gray-200";
+                    }
+                  };
+
+                  return (
+                    <div key={template.id} className="relative">
+                      {/* Connector line between milestones */}
+                      {tIdx < milestoneTemplate.length - 1 && (
+                        <div className={`absolute left-6 top-full z-0 h-4 w-0.5 ${
+                          status === "Completed" || status === "Skipped" ? "bg-success" : "bg-border"
+                        }`} />
+                      )}
+
+                      {/* Milestone header card */}
+                      <div className={`rounded-xl border-2 ${borderColor} bg-card shadow-sm transition-all`}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedMilestone(isExpanded ? null : template.id)}
+                          className="flex w-full items-center gap-4 p-4 text-left"
+                        >
+                          {/* Step number badge */}
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${statusColor} text-sm font-bold text-white shadow-sm`}>
+                            {template.order}
+                          </div>
+
+                          {/* Title & description */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="text-sm font-semibold text-text-primary">{template.name}</h4>
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBg}`}>
+                                {status}
+                              </span>
+                              {template.estimatedDays && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-text-muted">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  ~{template.estimatedDays} days
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-xs text-text-secondary">{template.description}</p>
+                          </div>
+
+                          {/* Task count & expand */}
+                          {hasTasks && (
+                            <div className="flex shrink-0 items-center gap-2">
+                              <span className="rounded-full bg-primary-50 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                                {template.tasks!.length} tasks
+                              </span>
+                              <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                            </div>
+                          )}
+                        </button>
+
+                        {/* Expanded tasks */}
+                        {isExpanded && hasTasks && (
+                          <div className="border-t border-border px-4 pb-4 pt-3">
+                            <div className="space-y-3">
+                              {template.tasks!.map((task, taskIdx) => (
+                                <div
+                                  key={task.id}
+                                  className="relative flex gap-3 rounded-lg border border-border bg-background p-3 transition-colors hover:border-primary/20 hover:bg-primary-50/30"
+                                >
+                                  {/* Task number */}
+                                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-[10px] font-bold text-text-muted shadow-sm ring-1 ring-border">
+                                    {template.order}.{taskIdx + 1}
+                                  </div>
+
+                                  <div className="min-w-0 flex-1">
+                                    {/* Task name + responsible */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-sm font-medium text-text-primary">{task.name}</span>
+                                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${responsibleColor(task.responsible)}`}>
+                                        {responsibleIcon(task.responsible)}
+                                        {task.responsible}
+                                      </span>
+                                    </div>
+
+                                    {/* Description */}
+                                    <p className="mt-0.5 text-xs text-text-secondary">{task.description}</p>
+
+                                    {/* Documents */}
+                                    <div className="mt-2 flex flex-wrap gap-3">
+                                      {task.documentsRequired && task.documentsRequired.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-1">
+                                          <FolderOpen className="h-3 w-3 text-amber-500" />
+                                          <span className="text-[10px] font-semibold text-amber-600">Required:</span>
+                                          {task.documentsRequired.map((doc) => (
+                                            <span key={doc} className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">{doc}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {task.documentsGenerated && task.documentsGenerated.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-1">
+                                          <FolderOutput className="h-3 w-3 text-emerald-500" />
+                                          <span className="text-[10px] font-semibold text-emerald-600">Generated:</span>
+                                          {task.documentsGenerated.map((doc) => (
+                                            <span key={doc} className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">{doc}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               )}
             </div>

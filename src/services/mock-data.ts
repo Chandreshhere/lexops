@@ -1103,16 +1103,104 @@ export const domainMilestoneTemplates: DomainMilestoneTemplate[] = [
   {
     domain: "TNCP",
     milestones: [
-      { id: "TNCP-M01", name: "Client Consultation", description: "Understand land details, intended use, existing permissions", order: 1, estimatedDays: 3 },
-      { id: "TNCP-M02", name: "Document Collection & Survey", description: "Collect khasra, map, survey number, ownership documents", order: 2, estimatedDays: 7 },
-      { id: "TNCP-M03", name: "Application Preparation", description: "Prepare layout/diversion/permission application with drawings", order: 3, estimatedDays: 10 },
-      { id: "TNCP-M04", name: "Application Submission to TNCP", description: "Submit application with required fees and documents", order: 4, estimatedDays: 3 },
-      { id: "TNCP-M05", name: "Scrutiny & Objections", description: "TNCP scrutinises application, raises queries/objections", order: 5, estimatedDays: 21 },
-      { id: "TNCP-M06", name: "Compliance of Objections", description: "Address queries, submit revised documents/drawings", order: 6, estimatedDays: 14 },
-      { id: "TNCP-M07", name: "Site Inspection", description: "TNCP team conducts site visit and inspection", order: 7, estimatedDays: 14 },
-      { id: "TNCP-M08", name: "Technical Committee Review", description: "Technical committee reviews and recommends approval/rejection", order: 8, estimatedDays: 21 },
-      { id: "TNCP-M09", name: "Approval / Rejection Order", description: "TNCP issues final approval or rejection order", order: 9, estimatedDays: 14 },
-      { id: "TNCP-M10", name: "Case Closure", description: "Final billing, deliver approval documents, close file", order: 10, estimatedDays: 5 },
+      {
+        id: "TNCP-M01", name: "Client Consultation", description: "Understand land details, intended use, existing permissions", order: 1, estimatedDays: 3,
+        tasks: [
+          { id: "TNCP-T01-1", name: "Initial Meeting with Client", description: "Discuss land location, area, intended use (residential/commercial/layout)", responsible: "Lawyer" },
+          { id: "TNCP-T01-2", name: "Verify Land Ownership", description: "Check registry, khasra/khatoni, revenue records for clear title", responsible: "Lawyer", documentsRequired: ["Registry copy", "Khasra/Khatoni", "Revenue records"] },
+          { id: "TNCP-T01-3", name: "Check Zoning & Master Plan", description: "Verify land falls in permissible zone as per TNCP master plan", responsible: "Lawyer", documentsRequired: ["Master plan extract", "Zoning certificate"] },
+          { id: "TNCP-T01-4", name: "Assess Feasibility & Fee Estimate", description: "Evaluate case feasibility, timeline and provide fee estimate to client", responsible: "Lawyer", documentsGenerated: ["Fee agreement", "Engagement letter"] },
+        ],
+      },
+      {
+        id: "TNCP-M02", name: "Document Collection & Survey", description: "Collect khasra, map, survey number, ownership documents", order: 2, estimatedDays: 7,
+        tasks: [
+          { id: "TNCP-T02-1", name: "Collect Ownership Documents", description: "Get sale deed, registry, power of attorney, succession certificate", responsible: "Client", documentsRequired: ["Sale deed", "Registry", "Power of Attorney"] },
+          { id: "TNCP-T02-2", name: "Obtain Revenue Records", description: "Get latest khasra, B1, naksha (map) from tehsil/patwari", responsible: "Clerk", documentsRequired: ["Khasra nakal", "B1 nakal", "Naksha"] },
+          { id: "TNCP-T02-3", name: "Conduct Land Survey", description: "Engage licensed surveyor for physical survey and demarcation", responsible: "Surveyor", documentsGenerated: ["Survey report", "Demarcation map"] },
+          { id: "TNCP-T02-4", name: "Obtain Encumbrance Certificate", description: "Get encumbrance certificate from sub-registrar office", responsible: "Clerk", documentsRequired: ["Encumbrance certificate"] },
+          { id: "TNCP-T02-5", name: "Get NOC from Revenue Dept", description: "Obtain no-objection from revenue department for land conversion", responsible: "Lawyer", documentsRequired: ["Revenue NOC"] },
+        ],
+      },
+      {
+        id: "TNCP-M03", name: "Application Preparation", description: "Prepare layout/diversion/permission application with drawings", order: 3, estimatedDays: 10,
+        tasks: [
+          { id: "TNCP-T03-1", name: "Engage Licensed Architect/Planner", description: "Appoint TNCP-empanelled architect to prepare layout/building plan", responsible: "Lawyer" },
+          { id: "TNCP-T03-2", name: "Prepare Layout/Building Plan", description: "Architect prepares layout plan as per TNCP building bye-laws and norms", responsible: "Architect", documentsGenerated: ["Layout plan", "Site plan", "Section drawings"] },
+          { id: "TNCP-T03-3", name: "Calculate Development Charges", description: "Compute fees, development charges, betterment levy as per TNCP schedule", responsible: "Lawyer", documentsGenerated: ["Fee calculation sheet"] },
+          { id: "TNCP-T03-4", name: "Draft Application Form", description: "Fill TNCP application form with all required particulars and declarations", responsible: "Lawyer", documentsGenerated: ["TNCP application form"] },
+          { id: "TNCP-T03-5", name: "Compile Document Set", description: "Compile all documents, NOCs, drawings, affidavits in prescribed format", responsible: "Clerk", documentsGenerated: ["Complete application set"] },
+          { id: "TNCP-T03-6", name: "Client Review & Sign", description: "Client reviews application and signs all documents and affidavits", responsible: "Client" },
+        ],
+      },
+      {
+        id: "TNCP-M04", name: "Application Submission to TNCP", description: "Submit application with required fees and documents", order: 4, estimatedDays: 3,
+        tasks: [
+          { id: "TNCP-T04-1", name: "Pay Processing Fee", description: "Pay prescribed application processing fee via DD/challan", responsible: "Client", documentsGenerated: ["Fee receipt", "Challan copy"] },
+          { id: "TNCP-T04-2", name: "Submit Application at TNCP Office", description: "Submit complete application set at TNCP office counter", responsible: "Clerk", documentsGenerated: ["Acknowledgment receipt"] },
+          { id: "TNCP-T04-3", name: "Verify Diary Number & Tracking", description: "Note diary/file number for future tracking and correspondence", responsible: "Lawyer" },
+          { id: "TNCP-T04-4", name: "Inform Client of Submission", description: "Send confirmation to client with diary number and expected timeline", responsible: "Lawyer" },
+        ],
+      },
+      {
+        id: "TNCP-M05", name: "Scrutiny & Objections", description: "TNCP scrutinises application, raises queries/objections", order: 5, estimatedDays: 21,
+        tasks: [
+          { id: "TNCP-T05-1", name: "Track Application Status", description: "Follow up with TNCP office for scrutiny progress", responsible: "Clerk" },
+          { id: "TNCP-T05-2", name: "Receive Scrutiny Report", description: "Collect scrutiny observations/objection letter from TNCP", responsible: "Lawyer", documentsRequired: ["Scrutiny report", "Objection letter"] },
+          { id: "TNCP-T05-3", name: "Analyse Objections", description: "Review each objection, assess if technical or procedural", responsible: "Lawyer" },
+          { id: "TNCP-T05-4", name: "Consult Architect on Technical Issues", description: "Discuss technical objections with architect for plan revisions", responsible: "Architect" },
+          { id: "TNCP-T05-5", name: "Inform Client of Objections", description: "Brief client on objections raised and additional requirements", responsible: "Lawyer" },
+        ],
+      },
+      {
+        id: "TNCP-M06", name: "Compliance of Objections", description: "Address queries, submit revised documents/drawings", order: 6, estimatedDays: 14,
+        tasks: [
+          { id: "TNCP-T06-1", name: "Prepare Revised Drawings", description: "Architect revises layout/plan addressing all technical objections", responsible: "Architect", documentsGenerated: ["Revised layout plan", "Revised drawings"] },
+          { id: "TNCP-T06-2", name: "Collect Additional Documents", description: "Obtain any additional NOCs, certificates or documents demanded", responsible: "Clerk", documentsRequired: ["Additional NOCs", "Updated records"] },
+          { id: "TNCP-T06-3", name: "Draft Compliance Reply", description: "Prepare point-by-point compliance reply to each objection", responsible: "Lawyer", documentsGenerated: ["Compliance reply letter"] },
+          { id: "TNCP-T06-4", name: "Submit Compliance Documents", description: "Submit revised documents and compliance reply at TNCP office", responsible: "Clerk", documentsGenerated: ["Compliance submission receipt"] },
+          { id: "TNCP-T06-5", name: "Follow Up on Re-scrutiny", description: "Track re-scrutiny status and ensure no further objections", responsible: "Lawyer" },
+        ],
+      },
+      {
+        id: "TNCP-M07", name: "Site Inspection", description: "TNCP team conducts site visit and inspection", order: 7, estimatedDays: 14,
+        tasks: [
+          { id: "TNCP-T07-1", name: "Receive Inspection Notice", description: "Get notice of scheduled site inspection date from TNCP", responsible: "Lawyer", documentsRequired: ["Inspection notice"] },
+          { id: "TNCP-T07-2", name: "Prepare Site for Inspection", description: "Ensure boundary marks, access roads visible; clear encroachments", responsible: "Client" },
+          { id: "TNCP-T07-3", name: "Attend Site Inspection", description: "Lawyer and client present during TNCP team inspection", responsible: "Lawyer" },
+          { id: "TNCP-T07-4", name: "Provide On-site Clarifications", description: "Answer queries from inspection team, show documents on site", responsible: "Lawyer" },
+          { id: "TNCP-T07-5", name: "Obtain Inspection Report", description: "Collect copy of site inspection report from TNCP", responsible: "Clerk", documentsRequired: ["Site inspection report"] },
+        ],
+      },
+      {
+        id: "TNCP-M08", name: "Technical Committee Review", description: "Technical committee reviews and recommends approval/rejection", order: 8, estimatedDays: 21,
+        tasks: [
+          { id: "TNCP-T08-1", name: "Track Committee Meeting Schedule", description: "Follow up on when technical committee meeting is scheduled", responsible: "Clerk" },
+          { id: "TNCP-T08-2", name: "Prepare Presentation (if required)", description: "Prepare summary/presentation for committee if personal hearing granted", responsible: "Lawyer" },
+          { id: "TNCP-T08-3", name: "Attend Committee Hearing", description: "Present case before technical committee if summoned", responsible: "Lawyer" },
+          { id: "TNCP-T08-4", name: "Receive Committee Recommendations", description: "Obtain copy of technical committee minutes and recommendations", responsible: "Lawyer", documentsRequired: ["Committee minutes", "Recommendation letter"] },
+          { id: "TNCP-T08-5", name: "Address Additional Conditions", description: "If conditional approval, comply with additional conditions set by committee", responsible: "Lawyer" },
+        ],
+      },
+      {
+        id: "TNCP-M09", name: "Approval / Rejection Order", description: "TNCP issues final approval or rejection order", order: 9, estimatedDays: 14,
+        tasks: [
+          { id: "TNCP-T09-1", name: "Receive Final Order", description: "Collect approval or rejection order from TNCP office", responsible: "Lawyer", documentsRequired: ["TNCP order copy"] },
+          { id: "TNCP-T09-2", name: "Pay Development Charges", description: "If approved, pay development charges, betterment levy and other fees", responsible: "Client", documentsGenerated: ["Payment receipts", "Demand note clearance"] },
+          { id: "TNCP-T09-3", name: "Collect Sanctioned Plan", description: "Obtain sanctioned/approved layout plan with TNCP stamp and signatures", responsible: "Clerk", documentsGenerated: ["Sanctioned plan copy"] },
+          { id: "TNCP-T09-4", name: "File Appeal (if rejected)", description: "If rejected, assess grounds and file appeal before appellate authority", responsible: "Lawyer", documentsGenerated: ["Appeal petition"] },
+          { id: "TNCP-T09-5", name: "Inform Client of Outcome", description: "Brief client on final outcome, conditions and next steps", responsible: "Lawyer" },
+        ],
+      },
+      {
+        id: "TNCP-M10", name: "Case Closure", description: "Final billing, deliver approval documents, close file", order: 10, estimatedDays: 5,
+        tasks: [
+          { id: "TNCP-T10-1", name: "Prepare Final Bill", description: "Prepare final fee bill with all expenses and government fees", responsible: "Lawyer", documentsGenerated: ["Final invoice"] },
+          { id: "TNCP-T10-2", name: "Deliver Documents to Client", description: "Hand over sanctioned plan, order copy and all original documents", responsible: "Clerk" },
+          { id: "TNCP-T10-3", name: "Archive Case File", description: "Scan and archive all documents digitally, close physical file", responsible: "Clerk" },
+          { id: "TNCP-T10-4", name: "Client Feedback", description: "Collect client satisfaction feedback and record", responsible: "Lawyer" },
+        ],
+      },
     ],
   },
   {

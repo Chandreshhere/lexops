@@ -38,11 +38,16 @@ import {
   Eye,
   X,
   Check,
+  Pencil,
+  Trash2,
+  Building2,
+  Settings2,
 } from "lucide-react";
 
 import { Modal } from "@/components/ui/modal";
 import { useAuthStore } from "@/store/auth-store";
 import { useToastStore } from "@/store/toast-store";
+import { useDepartmentStore } from "@/store/department-store";
 import { cn, getInitials, formatCurrency, formatDate } from "@/lib/utils";
 import {
   employees,
@@ -80,15 +85,7 @@ const caseHealthData = [
   { name: "Jun", progress: 60, recovery: 45 },
 ];
 
-const domainOptions = [
-  "Litigation",
-  "RERA",
-  "TNCP",
-  "IMC",
-  "IDA",
-  "Revenue",
-  "Financial Services",
-];
+/* domainOptions are now derived from department store */
 
 const carouselSlides = [
   {
@@ -186,10 +183,18 @@ export default function DashboardPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const addToast = useToastStore((s) => s.addToast);
 
+  // Department store
+  const departments = useDepartmentStore((s) => s.departments);
+  const selectedDepartment = useDepartmentStore((s) => s.selectedDepartment);
+  const setSelectedDepartment = useDepartmentStore((s) => s.setSelectedDepartment);
+  const addDepartment = useDepartmentStore((s) => s.addDepartment);
+  const editDepartment = useDepartmentStore((s) => s.editDepartment);
+  const deleteDepartment = useDepartmentStore((s) => s.deleteDepartment);
+
   /* ---------- Refs ---------- */
   const cardsRef = useRef<HTMLDivElement>(null);
   const featuredRef = useRef<HTMLDivElement>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
+  const deptDropdownRef = useRef<HTMLDivElement>(null);
   const periodRef = useRef<HTMLDivElement>(null);
   const successMenuRef = useRef<HTMLDivElement>(null);
   const hearingMenuRef = useRef<HTMLDivElement>(null);
@@ -208,8 +213,7 @@ export default function DashboardPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Dropdowns
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
+  const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
   const [periodOpen, setPeriodOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState("Monthly");
   const [successMenuOpen, setSuccessMenuOpen] = useState(false);
@@ -222,20 +226,33 @@ export default function DashboardPage() {
   // Carousel
   const [carouselIndex, setCarouselIndex] = useState(0);
 
+  // Department management modal
+  const [deptModalOpen, setDeptModalOpen] = useState(false);
+  const [deptNewName, setDeptNewName] = useState("");
+  const [deptEditId, setDeptEditId] = useState<string | null>(null);
+  const [deptEditName, setDeptEditName] = useState("");
+
   /* ---------- Animated counter ---------- */
   const successRate = useAnimatedCounter(85);
 
   /* ---------- Computed values ---------- */
+  const selectedDeptName = useMemo(() => {
+    if (!selectedDepartment) return "";
+    return departments.find((d) => d.id === selectedDepartment)?.name ?? "";
+  }, [selectedDepartment, departments]);
+
+  const domainOptions = useMemo(() => departments.map((d) => d.name), [departments]);
+
   const filteredCases = useMemo(() => {
-    if (selectedDomains.length === 0) return cases;
-    return cases.filter((c) => selectedDomains.includes(c.domain));
-  }, [selectedDomains]);
+    if (!selectedDeptName) return cases;
+    return cases.filter((c) => c.domain === selectedDeptName);
+  }, [selectedDeptName]);
 
   const filteredClients = useMemo(() => {
-    if (selectedDomains.length === 0) return clients;
+    if (!selectedDeptName) return clients;
     const clientIds = new Set(filteredCases.map((c) => c.clientId));
     return clients.filter((c) => clientIds.has(c.id));
-  }, [selectedDomains, filteredCases]);
+  }, [selectedDeptName, filteredCases]);
 
   const activeCasesCount = useMemo(
     () => filteredCases.filter((c) => c.status === "Active").length,
@@ -250,21 +267,21 @@ export default function DashboardPage() {
     [filteredClients]
   );
   const hearingsCount = useMemo(() => {
-    if (selectedDomains.length === 0) return upcomingHearings.length;
+    if (!selectedDeptName) return upcomingHearings.length;
     return upcomingHearings.filter((h) => {
       const c = cases.find((cs) => cs.id === h.caseId);
-      return c && selectedDomains.includes(c.domain);
+      return c && c.domain === selectedDeptName;
     }).length;
-  }, [selectedDomains]);
+  }, [selectedDeptName]);
   const pendingTasksCount = useMemo(() => {
-    if (selectedDomains.length === 0) return tasks.filter((t) => t.status !== "Done").length;
+    if (!selectedDeptName) return tasks.filter((t) => t.status !== "Done").length;
     return tasks.filter((t) => {
       if (t.status === "Done") return false;
       if (!t.caseId) return false;
       const c = cases.find((cs) => cs.id === t.caseId);
-      return c && selectedDomains.includes(c.domain);
+      return c && c.domain === selectedDeptName;
     }).length;
-  }, [selectedDomains]);
+  }, [selectedDeptName]);
 
   // Featured client (first client)
   const featuredClient = clients[0];
@@ -316,7 +333,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (filterRef.current && !filterRef.current.contains(target)) setFilterOpen(false);
+      if (deptDropdownRef.current && !deptDropdownRef.current.contains(target)) setDeptDropdownOpen(false);
       if (periodRef.current && !periodRef.current.contains(target)) setPeriodOpen(false);
       if (successMenuRef.current && !successMenuRef.current.contains(target)) setSuccessMenuOpen(false);
       if (hearingMenuRef.current && !hearingMenuRef.current.contains(target)) setHearingMenuOpen(false);
@@ -397,10 +414,35 @@ export default function DashboardPage() {
   const updateField = (field: string, value: string) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-  const toggleDomain = (domain: string) => {
-    setSelectedDomains((prev) =>
-      prev.includes(domain) ? prev.filter((d) => d !== domain) : [...prev, domain]
-    );
+  const handleAddDept = () => {
+    const trimmed = deptNewName.trim();
+    if (!trimmed) return;
+    if (departments.some((d) => d.name.toLowerCase() === trimmed.toLowerCase())) {
+      addToast({ type: "error", title: "Department already exists" });
+      return;
+    }
+    addDepartment(trimmed);
+    setDeptNewName("");
+    addToast({ type: "success", title: `Department "${trimmed}" added` });
+  };
+
+  const handleSaveEditDept = () => {
+    if (!deptEditId) return;
+    const trimmed = deptEditName.trim();
+    if (!trimmed) return;
+    if (departments.some((d) => d.id !== deptEditId && d.name.toLowerCase() === trimmed.toLowerCase())) {
+      addToast({ type: "error", title: "Department name already exists" });
+      return;
+    }
+    editDepartment(deptEditId, trimmed);
+    setDeptEditId(null);
+    setDeptEditName("");
+    addToast({ type: "success", title: "Department updated" });
+  };
+
+  const handleDeleteDept = (id: string, name: string) => {
+    deleteDepartment(id);
+    addToast({ type: "success", title: `Department "${name}" deleted` });
   };
 
   const handleDownload = () => {
@@ -573,67 +615,77 @@ export default function DashboardPage() {
           /* ---- Normal filter bar ---- */
           <>
             <div className="flex items-center gap-3">
-              {/* Filter dropdown */}
-              <div ref={filterRef} className="relative">
+              {/* Department selector dropdown */}
+              <div ref={deptDropdownRef} className="relative">
                 <button
                   onClick={() => {
-                    setFilterOpen(!filterOpen);
+                    setDeptDropdownOpen(!deptDropdownOpen);
                     setPeriodOpen(false);
                   }}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm shadow-sm transition-colors",
-                    selectedDomains.length > 0
+                    selectedDepartment
                       ? "border-primary bg-primary-50 text-primary"
                       : "border-border bg-card text-text-secondary hover:bg-primary-50 hover:text-primary"
                   )}
                 >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Filter
-                  {selectedDomains.length > 0 && (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
-                      {selectedDomains.length}
-                    </span>
-                  )}
+                  <Building2 className="h-4 w-4" />
+                  {selectedDeptName || "All Departments"}
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", deptDropdownOpen && "rotate-180")} />
                 </button>
-                {filterOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card py-2 shadow-xl">
+                {deptDropdownOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-xl border border-border bg-card py-2 shadow-xl">
                     <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                      Filter by Domain
+                      Filter by Department
                     </p>
-                    {domainOptions.map((domain) => (
+                    <button
+                      onClick={() => {
+                        setSelectedDepartment("");
+                        setDeptDropdownOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2.5 px-4 py-2 text-sm transition-colors hover:bg-primary-50 hover:text-primary",
+                        !selectedDepartment ? "font-semibold text-primary bg-primary-50" : "text-text-secondary"
+                      )}
+                    >
+                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200">
+                        <LayoutGrid className="h-3 w-3 text-gray-600" />
+                      </div>
+                      All Departments
+                      {!selectedDepartment && <Check className="ml-auto h-4 w-4 text-primary" />}
+                    </button>
+                    {departments.map((dept) => (
                       <button
-                        key={domain}
-                        onClick={() => toggleDomain(domain)}
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-text-secondary transition-colors hover:bg-primary-50 hover:text-primary"
+                        key={dept.id}
+                        onClick={() => {
+                          setSelectedDepartment(dept.id);
+                          setDeptDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-2.5 px-4 py-2 text-sm transition-colors hover:bg-primary-50 hover:text-primary",
+                          selectedDepartment === dept.id ? "font-semibold text-primary bg-primary-50" : "text-text-secondary"
+                        )}
                       >
                         <div
-                          className={cn(
-                            "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                            selectedDomains.includes(domain)
-                              ? "border-primary bg-primary"
-                              : "border-border"
-                          )}
-                        >
-                          {selectedDomains.includes(domain) && (
-                            <Check className="h-3 w-3 text-white" />
-                          )}
-                        </div>
-                        {domain}
+                          className="h-5 w-5 shrink-0 rounded-full"
+                          style={{ backgroundColor: dept.color + "30", border: `2px solid ${dept.color}` }}
+                        />
+                        {dept.name}
+                        {selectedDepartment === dept.id && <Check className="ml-auto h-4 w-4 text-primary" />}
                       </button>
                     ))}
-                    {selectedDomains.length > 0 && (
-                      <div className="mt-1 border-t border-border px-4 pt-2">
-                        <button
-                          onClick={() => {
-                            setSelectedDomains([]);
-                            setFilterOpen(false);
-                          }}
-                          className="w-full rounded-lg py-1.5 text-xs font-medium text-danger transition-colors hover:bg-red-50"
-                        >
-                          Clear All Filters
-                        </button>
-                      </div>
-                    )}
+                    <div className="mt-1 border-t border-border px-4 pt-2">
+                      <button
+                        onClick={() => {
+                          setDeptDropdownOpen(false);
+                          setDeptModalOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary-50"
+                      >
+                        <Settings2 className="h-3.5 w-3.5" />
+                        Manage Departments
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -643,7 +695,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => {
                     setPeriodOpen(!periodOpen);
-                    setFilterOpen(false);
+                    setDeptDropdownOpen(false);
                   }}
                   className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm text-text-secondary shadow-sm transition-colors hover:bg-primary-50 hover:text-primary"
                 >
@@ -1380,6 +1432,111 @@ export default function DashboardPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* ================================================================== */}
+      {/* DEPARTMENT MANAGEMENT MODAL                                         */}
+      {/* ================================================================== */}
+      <Modal
+        open={deptModalOpen}
+        onOpenChange={setDeptModalOpen}
+        title="Manage Departments"
+        description="Add, edit or remove departments to organize your data."
+        size="lg"
+      >
+        <div className="space-y-4">
+          {/* Add new department */}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={deptNewName}
+              onChange={(e) => setDeptNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddDept(); }}
+              placeholder="New department name"
+              className="flex-1 rounded-xl border-[1.5px] border-border bg-card px-4 py-2.5 text-sm text-text-primary shadow-sm placeholder:text-text-muted outline-none transition-all hover:border-primary-light/40 focus:border-primary-light focus:shadow-[0_0_0_3px_rgb(37_99_235/0.12)]"
+            />
+            <button
+              onClick={handleAddDept}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-light"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </button>
+          </div>
+
+          {/* Department list */}
+          <div className="max-h-80 space-y-1 overflow-y-auto">
+            {departments.map((dept) => (
+              <div
+                key={dept.id}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-background"
+              >
+                <div
+                  className="h-4 w-4 shrink-0 rounded-full"
+                  style={{ backgroundColor: dept.color }}
+                />
+                {deptEditId === dept.id ? (
+                  <div className="flex flex-1 items-center gap-2">
+                    <input
+                      type="text"
+                      value={deptEditName}
+                      onChange={(e) => setDeptEditName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleSaveEditDept(); if (e.key === "Escape") { setDeptEditId(null); setDeptEditName(""); } }}
+                      autoFocus
+                      className="flex-1 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-text-primary outline-none focus:border-primary"
+                    />
+                    <button
+                      onClick={handleSaveEditDept}
+                      className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-light"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => { setDeptEditId(null); setDeptEditName(""); }}
+                      className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-background"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm font-medium text-text-primary">{dept.name}</span>
+                    <span className="mr-2 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      {cases.filter((c) => c.domain === dept.name).length} cases
+                    </span>
+                    <button
+                      onClick={() => { setDeptEditId(dept.id); setDeptEditName(dept.name); }}
+                      className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-primary-50 hover:text-primary"
+                      title="Edit"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDept(dept.id, dept.name)}
+                      className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-red-50 hover:text-danger"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {departments.length === 0 && (
+              <p className="py-6 text-center text-sm text-text-muted">No departments yet. Add one above.</p>
+            )}
+          </div>
+
+          {/* Close button */}
+          <div className="flex justify-end border-t border-border pt-4">
+            <button
+              onClick={() => setDeptModalOpen(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-background"
+            >
+              Done
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
